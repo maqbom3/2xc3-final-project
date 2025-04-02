@@ -90,8 +90,7 @@ def bellman_ford(graph, source, k):
 
 
 #Part 2.3 
-
-# Helper: Ground Truth 
+# Helper function for true shortest path distances
 def bellman_ford_true(graph, source):
     distances = {node: float('infinity') for node in graph}
     distances[source] = 0
@@ -182,7 +181,7 @@ def draw_accuracy_graph(sizes, d_acc, b_acc):
     plt.legend()
     plt.show()
 
-# ------------------ Run the One Experiment ------------------
+# Run the Experiment 
 if __name__ == "__main__":
     sizes, d_times, b_times, d_acc, b_acc = experiment_vary_graph_size()
     draw_performance_graph(sizes, d_times, b_times)
