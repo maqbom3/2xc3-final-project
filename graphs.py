@@ -23,7 +23,6 @@ class Graph:
         return 0.0
 
 
-
 class WeightedGraph(Graph):
     """Directed weighted graph"""
     def __init__(self):
@@ -32,16 +31,24 @@ class WeightedGraph(Graph):
 
     def add_edge(self, start: int, end: int, w: float):
         """Adds a directed edge from start to end with weight w"""
-        super().add_edge(start, end, w)
+        self.adj_list.setdefault(start, []).append((end, w))
         self.weights[(start, end)] = w  # Directed edge only
 
     def w(self, node1: int, node2: int) -> float:
         """Returns weight of the directed edge from node1 to node2"""
-        return self.weights.get((node1, node2), float('inf'))  # No reverse lookup
+        return self.weights.get((node1, node2), float('inf'))
 
     def get_edges(self) -> List[Tuple[int, int, float]]:
         """Returns a list of all directed edges with weights"""
         return [(start, end, self.weights[(start, end)]) for (start, end) in self.weights]
+
+    def neighbors(self, node: int) -> List[int]:
+        return [v for (u, v) in self.weights if u == node]
+
+    def get_edge_weight(self, u: int, v: int) -> float:
+        """Used by BellmanFord class in shortest_path.py"""
+        return self.w(u, v)
+
 
 
 class HeuristicGraph(WeightedGraph):

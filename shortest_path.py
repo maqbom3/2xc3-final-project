@@ -25,9 +25,48 @@ class BellmanFord(SPAlgorithm):
     def __init__(self):
         self.distance = {}
         self.previous = {}
+    
     def calc_sp(self, graph: WeightedGraph, source: int, dest: int) -> float:
-        # Implement Bellman-Ford for directed graphs
-        pass
+        # Initialize distances and previous nodes
+        self.distance = {node: float('infinity') for node in range(graph.num_vertices())}
+        self.previous = {node: None for node in range(graph.num_vertices())}
+        # Set distance to source as 0
+        self.distance[source] = 0
+        # Relax edges |V| - 1 times
+        for _ in range(graph.num_vertices() - 1):
+            # For each edge in the graph
+            for u in range(graph.num_vertices()):
+                for v in graph.neighbors(u):
+                    weight = graph.get_edge_weight(u, v)
+                    # If we can improve the shortest path to v through u
+                    if self.distance[u] != float('infinity') and self.distance[u] + weight < self.distance[v]:
+                        self.distance[v] = self.distance[u] + weight
+                        self.previous[v] = u
+        # Check for negative weight cycles
+        for u in range(graph.num_vertices()):
+            for v in graph.neighbors(u):
+                weight = graph.get_edge_weight(u, v)
+                if self.distance[u] != float('infinity') and self.distance[u] + weight < self.distance[v]:
+                    # Negative weight cycle detected
+                    raise ValueError("Graph contains a negative weight cycle")
+        # Return the shortest distance to destination
+        return self.distance[dest]
+    
+    def get_path(self, dest: int) -> list:
+        """Return the shortest path to the destination as a list of vertices"""
+        if self.distance.get(dest, float('infinity')) == float('infinity'):
+            return []  # No path exists
+        
+        path = []
+        current = dest
+        
+        # Reconstruct the path from destination to source
+        while current is not None:
+            path.append(current)
+            current = self.previous[current]
+        
+        # Return the path in correct order (source to destination)
+        return path[::-1]
 
 class AStar(SPAlgorithm):
     """A* algorithm implementation"""
