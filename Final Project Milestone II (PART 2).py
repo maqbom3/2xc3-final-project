@@ -8,6 +8,8 @@ from shortest_path import BellmanFord  # Custom Bellman-Ford solver class
 from typing import Dict, List, Tuple
 
 # Part 2.1 — Dijkstra's algorithm with k-relaxation limit
+
+
 def dijkstra(graph: WeightedGraph, source: int, k: int) -> Tuple[Dict[int, float], Dict[int, List[int]]]:
     # Initialize distances to infinity, except the source node
     distances = {node: float('inf') for node in range(graph.num_vertices())}
@@ -33,16 +35,21 @@ def dijkstra(graph: WeightedGraph, source: int, k: int) -> Tuple[Dict[int, float
             distance = current_distance + weight
             if distance < distances[neighbor]:
                 distances[neighbor] = distance  # Update shorter distance
-                paths[neighbor] = paths[current_node] + [neighbor]  # Update path
+                paths[neighbor] = paths[current_node] + \
+                    [neighbor]  # Update path
                 relaxation_count[neighbor] += 1  # Count the relaxation
-                heapq.heappush(priority_queue, (distance, neighbor))  # Push to queue
+                # Push to queue
+                heapq.heappush(priority_queue, (distance, neighbor))
 
     return distances, paths
 
 # Part 2.2 — Bellman-Ford algorithm with k-relaxation
+
+
 def bellman_ford(graph: WeightedGraph, source: int, k: int) -> Tuple[Dict[int, float], Dict[int, List[int]]]:
     # Initialize distances and paths
-    distances = {node: float('infinity') for node in range(graph.num_vertices())}
+    distances = {node: float('infinity')
+                 for node in range(graph.num_vertices())}
     distances[source] = 0
     paths = {node: [] for node in range(graph.num_vertices())}
     paths[source] = [source]
@@ -64,6 +71,63 @@ def bellman_ford(graph: WeightedGraph, source: int, k: int) -> Tuple[Dict[int, f
 
     return distances, paths
 
+
+def A_star(graph: WeightedGraph, source: int, dest: int, h: dict) -> tuple[Dict[int, int], list]:
+    # Initialize predecessor dictionary
+    pred = {}
+    for node in graph.adj_list:
+        pred[node] = None
+    # Initialize heap and marked lists
+    heap = []
+    marked = []
+
+    # Initialize g and h
+    g = 0
+    current_h = h[source][dest]
+    f = g + current_h
+    heapq.heappush(heap, (h[source][dest], source))
+    while len(heap) > 0:
+        # Get node off the top of the heap
+        current_f, current = heapq.heappop(heap)
+
+        # Get g value for current node
+        g = current_f - h[current][dest]
+
+        # If the current node is the destination we are done and we reconstruct the path from the predecessor dict
+        if current == dest:
+            return pred, reconstruct(source, dest, pred)
+        
+        # Otherwise add the current node to marked
+        marked.append(current)
+
+        #For every edge on the current node
+        for x in graph.adj_list[current]:
+            node = x[0]
+            # If the nieghbour is in marked skip it
+            if node in marked:
+                continue
+            
+            # Compute g and f values for the neighbour node
+            maybe_g = g + graph.get_edge_weight(current, node)
+            maybe_f = maybe_g + h[node][dest]
+
+            # If the neighbour node is not in the heap then add it
+            if (maybe_f, node) not in heap:
+                heapq.heappush(heap, (maybe_f, node))
+                pred[node] = current
+
+
+def reconstruct(source: int, dest: int, pred: dict[int, int]):
+    node = dest
+    path = [dest]
+    while node != source:
+        print(path)
+        path.append(pred[node])
+        node = pred[node]
+    path.reverse()
+    return path
+
+
 # Random graph generator
 def generate_random_graph(n: int, density: float = 0.3, weight_range: Tuple[int, int] = (1, 10)) -> WeightedGraph:
     graph = WeightedGraph()
@@ -84,8 +148,10 @@ def generate_random_graph(n: int, density: float = 0.3, weight_range: Tuple[int,
             added.add((u, v))
             edges_added += 1
 
-    graph.num_vertices = lambda: len(vertex_set)  # Dynamically define num_vertices
+    # Dynamically define num_vertices
+    graph.num_vertices = lambda: len(vertex_set)
     return graph
+
 
 # Part 2.3 — Run experiment on varying graph sizes
 def experiment_vary_graph_size():
@@ -113,7 +179,8 @@ def experiment_vary_graph_size():
 
             bf_solver = BellmanFord()
             try:
-                bf_solver.calc_sp(graph, source, source)  # Ground truth using full Bellman-Ford
+                # Ground truth using full Bellman-Ford
+                bf_solver.calc_sp(graph, source, source)
             except Exception as e:
                 print(f"  Skipping graph due to: {e}")
                 continue
@@ -131,8 +198,10 @@ def experiment_vary_graph_size():
             b_time_total += (time.time() - start) * 1000
 
             # Calculate accuracy by comparing with ground truth
-            correct_d = sum(1 for node in ground_truth if d_out[node] == ground_truth[node])
-            correct_b = sum(1 for node in ground_truth if b_out[node] == ground_truth[node])
+            correct_d = sum(
+                1 for node in ground_truth if d_out[node] == ground_truth[node])
+            correct_b = sum(
+                1 for node in ground_truth if b_out[node] == ground_truth[node])
 
             d_acc_total += correct_d / size * 100
             b_acc_total += correct_b / size * 100
@@ -148,6 +217,8 @@ def experiment_vary_graph_size():
     return graph_sizes, dijkstra_times, bellman_times, dijkstra_acc, bellman_acc
 
 # Plotting the runtime graph
+
+
 def draw_performance_graph(sizes, d_times, b_times):
     print("Drawing performance graph...")
     plt.figure(figsize=(10, 6))
@@ -162,6 +233,8 @@ def draw_performance_graph(sizes, d_times, b_times):
     plt.show()
 
 # Plotting the accuracy graph
+
+
 def draw_accuracy_graph(sizes, d_acc, b_acc):
     print("Drawing accuracy graph...")
     plt.figure(figsize=(10, 6))
@@ -176,9 +249,11 @@ def draw_accuracy_graph(sizes, d_acc, b_acc):
     plt.show()
 
 
+
 if __name__ == "__main__":
     print("Starting experiment...")
     sizes, d_times, b_times, d_acc, b_acc = experiment_vary_graph_size()
     draw_performance_graph(sizes, d_times, b_times)
     draw_accuracy_graph(sizes, d_acc, b_acc)
     print("Experiment complete. Plots saved.")
+
