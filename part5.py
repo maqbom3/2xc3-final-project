@@ -40,6 +40,14 @@ def build_heuristic_graph(dest, heuristic_type):
 
 # ------------------ Categorization Logic ------------------
 
+def build_line_to_stations_map(connections_df):
+    mapping = defaultdict(set)
+    for _, row in connections_df.iterrows():
+        mapping[row['line']].add(int(row['station1']))
+        mapping[row['line']].add(int(row['station2']))
+    return mapping
+
+
 def build_station_to_lines_map(connections_df):
     mapping = defaultdict(set)
     for _, row in connections_df.iterrows():
@@ -47,12 +55,22 @@ def build_station_to_lines_map(connections_df):
         mapping[int(row['station2'])].add(row['line'])
     return mapping
 
+def lines_are_adjacent(lines1, lines2):
+    for l1 in lines1:
+        for l2 in lines2:
+            if l1 == l2:
+                continue
+            # Check if they share any station (transfer station)
+            if line_to_stations[l1] & line_to_stations[l2]:
+                return True
+    return False
+
 def categorize_station_pair(s1, s2):
     lines1 = station_to_lines[s1]
     lines2 = station_to_lines[s2]
     if lines1 & lines2:
         return "same_line"
-    elif any(l1 in lines2 for l1 in lines1):
+    elif lines_are_adjacent(lines1, lines2):
         return "adjacent_line"
     else:
         return "multi_transfer"
@@ -192,7 +210,7 @@ def plot_all_pairs_results(df):
 # ------------------ Main Logic ------------------
 
 if __name__ == "__main__":
-    SAMPLE_SIZE = 250
+    SAMPLE_SIZE = 1000
     MAX_PAIRS = 1000
 
     stations_df = pd.read_csv("data/london_stations.csv")
@@ -202,6 +220,7 @@ if __name__ == "__main__":
         row['id']: (row['latitude'], row['longitude'])
         for _, row in stations_df.iterrows()
     }
+    line_to_stations = build_line_to_stations_map(connections_df)
     station_to_lines = build_station_to_lines_map(connections_df)
 
     wg = WeightedGraph()
