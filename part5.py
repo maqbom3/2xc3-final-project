@@ -207,11 +207,58 @@ def plot_all_pairs_results(df):
     plt.tight_layout()
     plt.show()
 
+def count_lines_in_path(path: list[int], connections_df: pd.DataFrame) -> int:
+    """Given a path (list of station IDs), return how many unique lines it uses."""
+    if not path or len(path) < 2:
+        return 0
+
+    # Build an edge-to-line mapping
+    edge_to_lines = defaultdict(set)
+    for _, row in connections_df.iterrows():
+        u, v, line = int(row['station1']), int(row['station2']), row['line']
+        edge_to_lines[(u, v)].add(line)
+        edge_to_lines[(v, u)].add(line)
+
+    used_lines = set()
+    for i in range(len(path) - 1):
+        u, v = path[i], path[i + 1]
+        if (u, v) in edge_to_lines:
+            used_lines.update(edge_to_lines[(u, v)])
+        elif (v, u) in edge_to_lines:
+            used_lines.update(edge_to_lines[(v, u)])
+    return len(used_lines)
+
+
+def compute_lines_used_for_all_categories(sampled_pairs, wg, connections_df):
+    dijkstra = Dijkstra()
+    results = []
+
+    print("\n⏳ Computing lines used in shortest paths (by category)...")
+    for category, pairs in sampled_pairs.items():
+        for source, dest in tqdm(pairs, desc=f"Category: {category}"):
+            try:
+                dijkstra.calc_sp(wg, source, dest)
+                path = dijkstra.get_shortest_path(dest)
+                line_count = count_lines_in_path(path, connections_df)
+                results.append({
+                    "source": source,
+                    "dest": dest,
+                    "category": category,
+                    "path": path,
+                    "lines_used": line_count
+                })
+            except Exception:
+                continue
+    return pd.DataFrame(results)
+
+
 # ------------------ Main Logic ------------------
 
 if __name__ == "__main__":
     SAMPLE_SIZE = 1000
-    MAX_PAIRS = 1000
+
+    # Change None to 1000 to do this faster
+    MAX_PAIRS = None
 
     stations_df = pd.read_csv("data/london_stations.csv")
     connections_df = pd.read_csv("data/london_connections.csv")
@@ -249,3 +296,9 @@ if __name__ == "__main__":
     all_pair_results = run_all_pairs_experiment(wg, station_ids, id_to_coords, max_pairs=MAX_PAIRS)
     df_all = pd.DataFrame(all_pair_results)
     plot_all_pairs_results(df_all)
+
+    # Compute and analyze line usage across all categories
+    df_lines = compute_lines_used_for_all_categories(sampled, wg, connections_df)
+
+    print("\n--- 🧾 Line Usage Summary by Category ---")
+    print(df_lines.groupby("category")["lines_used"].describe())
