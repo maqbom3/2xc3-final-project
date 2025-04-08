@@ -69,63 +69,7 @@ def bellman_ford(graph: WeightedGraph, source: int, k: int) -> Tuple[Dict[int, f
         if not updated:
             break  # Early stop if no updates
 
-    return distances, paths
-
-
-def A_star(graph: WeightedGraph, source: int, dest: int, h: dict) -> tuple[Dict[int, int], list]:
-    # Initialize predecessor dictionary
-    pred = {}
-    for node in graph.adj_list:
-        pred[node] = None
-    # Initialize heap and marked lists
-    heap = []
-    marked = []
-
-    # Initialize g and h
-    g = 0
-    current_h = h[source][dest]
-    f = g + current_h
-    heapq.heappush(heap, (h[source][dest], source))
-    while len(heap) > 0:
-        # Get node off the top of the heap
-        current_f, current = heapq.heappop(heap)
-
-        # Get g value for current node
-        g = current_f - h[current][dest]
-
-        # If the current node is the destination we are done and we reconstruct the path from the predecessor dict
-        if current == dest:
-            return pred, reconstruct(source, dest, pred)
-        
-        # Otherwise add the current node to marked
-        marked.append(current)
-
-        #For every edge on the current node
-        for x in graph.adj_list[current]:
-            node = x[0]
-            # If the nieghbour is in marked skip it
-            if node in marked:
-                continue
-            
-            # Compute g and f values for the neighbour node
-            maybe_g = g + graph.get_edge_weight(current, node)
-            maybe_f = maybe_g + h[node][dest]
-
-            # If the neighbour node is not in the heap then add it
-            if (maybe_f, node) not in heap:
-                heapq.heappush(heap, (maybe_f, node))
-                pred[node] = current
-
-
-def reconstruct(source: int, dest: int, pred: dict[int, int]):
-    node = dest
-    path = [dest]
-    while node != source:
-        print(path)
-        path.append(pred[node])
-        node = pred[node]
-    path.reverse()
-    return path
+    return distances, paths    
 
 
 # Random graph generator
