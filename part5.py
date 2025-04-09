@@ -155,6 +155,36 @@ def run_all_pairs_experiment(wg, station_ids, id_to_coords, heuristics=['haversi
                 continue
     return results
 
+
+def run_dijkstra_category_experiment(sampled_pairs, wg):
+    """
+    Runs Dijkstra only on the categorized station pairs and returns a result DataFrame.
+    """
+    dijkstra = Dijkstra()
+    results = []
+
+    print("\n🚆 Running Dijkstra on categorized station pairs...")
+    for category, pairs in sampled_pairs.items():
+        for source, dest in tqdm(pairs, desc=f"Category: {category}"):
+            try:
+                start = time.time()
+                distance = dijkstra.calc_sp(wg, source, dest)
+                elapsed = time.time() - start
+                results.append({
+                    'source': source,
+                    'dest': dest,
+                    'algorithm': 'dijkstra',
+                    'heuristic': 'none',
+                    'distance': distance,
+                    'time': elapsed,
+                    'category': category
+                })
+            except Exception:
+                continue
+
+    return pd.DataFrame(results)
+
+
 # ------------------ Plotting ------------------
 
 def plot_category_results(df):
@@ -180,6 +210,33 @@ def plot_category_results(df):
     plt.grid(True)
     plt.tight_layout()
     plt.show()
+
+
+def plot_category_results_dijkstra_only(df):
+    plt.figure(figsize=(12, 6))
+    colors = {'same_line': 'blue', 'adjacent_line': 'green', 'multi_transfer': 'red'}
+
+    for category in df['category'].unique():
+        subset = df[(df['algorithm'] == 'dijkstra') & (df['category'] == category)]
+        subset = subset.dropna(subset=['distance', 'time'])
+        plt.scatter(subset['distance'], subset['time'], label=f"Dijkstra ({category})", color=colors[category], alpha=0.5, s=10)
+
+        if len(subset) > 1:
+            x = subset['distance'].values
+            y = subset['time'].values
+            m, b = np.polyfit(x, y, 1)
+            x_sorted = np.sort(x)
+            plt.plot(x_sorted, m * x_sorted + b, color=colors[category], linestyle='--', linewidth=2)
+
+    plt.xlabel("Distance (km)")
+    plt.ylabel("Execution Time (s)")
+    plt.title("Execution Time vs Distance for Dijkstra (by Line Category)")
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+
+
 
 def plot_all_pairs_results(df):
     plt.figure(figsize=(12, 6))
@@ -251,6 +308,32 @@ def compute_lines_used_for_all_categories(sampled_pairs, wg, connections_df):
                 continue
     return pd.DataFrame(results)
 
+def compute_dijkstra_lines_used_by_category(sampled_pairs, wg, connections_df):
+    """
+    Computes the number of unique lines used in Dijkstra paths, grouped by category.
+    """
+    dijkstra = Dijkstra()
+    results = []
+
+    print("\n🧾 Computing line usage with Dijkstra (by category)...")
+    for category, pairs in sampled_pairs.items():
+        for source, dest in tqdm(pairs, desc=f"Category: {category}"):
+            try:
+                dijkstra.calc_sp(wg, source, dest)
+                path = dijkstra.get_shortest_path(dest)
+                line_count = count_lines_in_path(path, connections_df)
+                results.append({
+                    "source": source,
+                    "dest": dest,
+                    "category": category,
+                    "path": path,
+                    "lines_used": line_count
+                })
+            except Exception:
+                continue
+    return pd.DataFrame(results)
+
+
 
 # ------------------ Main Logic ------------------
 
@@ -258,7 +341,7 @@ if __name__ == "__main__":
     SAMPLE_SIZE = 1000
 
     # Change None to 1000 to do this faster
-    MAX_PAIRS = None
+    MAX_PAIRS = 1000
 
     stations_df = pd.read_csv("data/london_stations.csv")
     connections_df = pd.read_csv("data/london_connections.csv")
@@ -291,6 +374,9 @@ if __name__ == "__main__":
         all_results.extend(results)
     df_category = pd.DataFrame(all_results)
     plot_category_results(df_category)
+    # Run categorized Dijkstra-only experiment
+    df_dijkstra_category = run_dijkstra_category_experiment(sampled, wg)
+    plot_category_results_dijkstra_only(df_dijkstra_category)
 
     # Run all-pairs experiment
     all_pair_results = run_all_pairs_experiment(wg, station_ids, id_to_coords, max_pairs=MAX_PAIRS)
@@ -300,5 +386,12 @@ if __name__ == "__main__":
     # Compute and analyze line usage across all categories
     df_lines = compute_lines_used_for_all_categories(sampled, wg, connections_df)
 
-    print("\n--- 🧾 Line Usage Summary by Category ---")
+    print("\n--- 🧾 Line Usage Summary (A*, by Category) ---")
     print(df_lines.groupby("category")["lines_used"].describe())
+
+    # Compute line usage for categorized pairs using Dijkstra
+    df_dijkstra_lines = compute_dijkstra_lines_used_by_category(sampled, wg, connections_df)
+
+    # Print summary statistics
+    print("\n--- 📊 Line Usage Summary (Dijkstra, by Category) ---")
+    print(df_dijkstra_lines.groupby("category")["lines_used"].describe())
