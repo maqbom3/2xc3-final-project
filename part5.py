@@ -341,7 +341,7 @@ if __name__ == "__main__":
     SAMPLE_SIZE = 1000
 
     # Change None to 1000 to do this faster
-    MAX_PAIRS = 1000
+    MAX_PAIRS = None
 
     stations_df = pd.read_csv("data/london_stations.csv")
     connections_df = pd.read_csv("data/london_connections.csv")
